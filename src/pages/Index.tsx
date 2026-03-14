@@ -71,7 +71,6 @@ const Index = () => {
           genData={genData}
           selectedPost={selectedPost}
           canvaDesignId={canvaDesignId}
-          canvaKey={apiKeys.canva}
           onBack={() => setStep(3)}
         />
       )}
