@@ -19,13 +19,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Llamada a Notion sin 'sorts', porque ID es texto
     const res = await fetch(
       `https://api.notion.com/v1/databases/${databaseId}/query`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${notionToken}`,
-          "Notion-Version": "2022-06-28",
+          "Notion-Version": "2026-03-11",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
