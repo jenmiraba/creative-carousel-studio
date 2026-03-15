@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { NotionPost, FilterType } from "@/types/carousel";
 
 interface StepNotionProps {
@@ -24,21 +25,13 @@ const FILTERS: { key: FilterType; label: string }[] = [
 ];
 
 const StepNotion = ({
-  posts,
-  selectedPost,
-  canvaDesignId,
-  filter,
-  notionKey,
-  onPostsLoaded,
-  onSelectPost,
-  onCanvaIdChange,
-  onFilterChange,
-  onContinue,
+  posts, selectedPost, canvaDesignId, filter, notionKey,
+  onPostsLoaded, onSelectPost, onCanvaIdChange, onFilterChange, onContinue,
 }: StepNotionProps) => {
   const [loading, setLoading] = useState(false);
   const [loadStatus, setLoadStatus] = useState<"idle" | "ok" | "error">("idle");
 
-  const filteredPosts = posts.filter((p) => {
+  const filteredPosts = posts.filter(p => {
     if (filter === "carrusel") return p.formato.toLowerCase() === "carrusel";
     if (filter === "canva") return p.herramientas.includes("Canva");
     if (filter === "sinlink") return !p.linkCanva;
@@ -46,48 +39,28 @@ const StepNotion = ({
   });
 
   const loadNotion = async () => {
-    if (!notionKey) {
-      alert("Necesitás configurar el Notion Integration Token primero.");
-      return;
-    }
-
+    if (!notionKey) { alert("Necesitás configurar el Notion Integration Token primero."); return; }
     setLoading(true);
     setLoadStatus("idle");
 
     try {
-      const res = await fetch(
-        `https://api.notion.com/v1/databases/${NOTION_DB}/query`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${notionKey}`,
-            "Notion-Version": "2026-03-11",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            page_size: 100,
-          }),
-        }
-      );
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("notion-proxy", {
+        body: { notionToken: notionKey, databaseId: NOTION_DB, pageSize: 100 },
+      });
 
-      const data = await res.json();
+      if (fnError) throw new Error(fnError.message || "Edge function error");
+      const data = fnData;
+      if (data.object === "error") throw new Error(data.message || `Error ${data.status}`);
 
-      if (data.object === "error") {
-        throw new Error(data.message);
-      }
 
       const mapped: NotionPost[] = data.results.map((p: any) => {
         const props = p.properties;
-
         return {
           id: p.id,
           num: props["ID"]?.rich_text?.[0]?.plain_text || "",
-          title:
-            props["Título del Post"]?.title?.[0]?.plain_text || "(Sin título)",
+          title: props["Título del Post"]?.title?.[0]?.plain_text || "(Sin título)",
           formato: props["Formato"]?.select?.name || "",
-          herramientas: (props["Herramientas"]?.multi_select || []).map(
-            (h: any) => h.name
-          ),
+          herramientas: (props["Herramientas"]?.multi_select || []).map((h: any) => h.name),
           estatus: props["Estatus"]?.select?.name || "",
           canal: (props["Canal"]?.multi_select || []).map((c: any) => c.name),
           linkCanva: props["Link Canva"]?.rich_text?.[0]?.plain_text || "",
@@ -103,13 +76,11 @@ const StepNotion = ({
       console.error(e);
       setLoadStatus("error");
     }
-
     setLoading(false);
   };
 
   const selectPost = (post: NotionPost) => {
     onSelectPost(post);
-
     if (post.linkCanva) {
       const match = post.linkCanva.match(/([A-Z][a-zA-Z0-9_-]{10})/);
       onCanvaIdChange(match ? match[1] : post.linkCanva);
@@ -121,13 +92,12 @@ const StepNotion = ({
   return (
     <div className="surface-1 border border-border rounded-lg p-6">
       <p className="text-[13px] text-muted-foreground/80 mb-5 leading-relaxed">
-        Cargá tus posts desde Notion y seleccioná el carrusel que querés
-        trabajar. Asegurate de que la integración de Notion tenga acceso a tu
-        Content Hub.
+        Cargá tus posts desde Notion y seleccioná el carrusel que querés trabajar. Asegurate de que la integración de Notion tenga acceso a tu Content Hub.
       </p>
 
+      {/* Filter bar */}
       <div className="flex gap-2 mb-3 flex-wrap">
-        {FILTERS.map((f) => (
+        {FILTERS.map(f => (
           <button
             key={f.key}
             onClick={() => onFilterChange(f.key)}
@@ -140,7 +110,6 @@ const StepNotion = ({
             {f.label}
           </button>
         ))}
-
         <a
           href="https://www.notion.so/31fb9c1cc8bc803aa088c5026835f382"
           target="_blank"
@@ -151,6 +120,7 @@ const StepNotion = ({
         </a>
       </div>
 
+      {/* Load button */}
       <button
         onClick={loadNotion}
         disabled={loading}
@@ -162,18 +132,13 @@ const StepNotion = ({
             : "border-border-strong text-muted-foreground/80 bg-foreground/[0.02] hover:border-primary hover:text-primary"
         }`}
       >
-        {loading
-          ? "⟳ Cargando..."
-          : loadStatus === "ok"
-          ? `✓ ${posts.length} posts cargados`
-          : loadStatus === "error"
-          ? "✗ Error — verificá tu token de Notion"
-          : "⟳ Cargar posts desde Notion"}
+        {loading ? "⟳ Cargando..." : loadStatus === "ok" ? `✓ ${posts.length} posts cargados` : loadStatus === "error" ? "✗ Error — verificá tu token de Notion" : "⟳ Cargar posts desde Notion"}
       </button>
 
+      {/* Posts list */}
       {filteredPosts.length > 0 && (
         <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto mb-4 scrollbar-thin">
-          {filteredPosts.map((p) => (
+          {filteredPosts.map(p => (
             <button
               key={p.id}
               onClick={() => selectPost(p)}
@@ -188,12 +153,43 @@ const StepNotion = ({
                   #{p.num}
                 </span>
               )}
-
-              <span className="text-[13px] font-medium flex-1 truncate">
-                {p.title}
-              </span>
+              <span className="text-[13px] font-medium flex-1 truncate">{p.title}</span>
+              <div className="flex gap-1.5 shrink-0">
+                {p.formato && <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-primary/15 text-primary">{p.formato}</span>}
+                {p.estatus && <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-foreground/[0.07] text-muted-foreground/80">{p.estatus}</span>}
+                {p.canal.map(c => (
+                  <span key={c} className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${c === "LinkedIn" ? "bg-blue-500/15 text-blue-400" : "bg-primary/15 text-primary"}`}>
+                    {c}
+                  </span>
+                ))}
+              </div>
+              {p.linkCanva ? (
+                <span className="text-[10px] text-success font-mono shrink-0">✓ {p.linkCanva.slice(0, 15)}</span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground font-mono shrink-0">sin link</span>
+              )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Selected post info */}
+      {selectedPost && (
+        <div className="bg-primary/[0.08] border border-primary/20 rounded-lg p-3.5 mb-4">
+          <div className="text-sm font-semibold mb-1">{selectedPost.title}</div>
+          <div className="text-xs text-muted-foreground/80">
+            {[selectedPost.formato, selectedPost.estatus, selectedPost.pilar, selectedPost.slides ? `${selectedPost.slides} slides` : ""].filter(Boolean).join(" · ")}
+          </div>
+          <div className="mt-2.5">
+            <label className="text-[11px] text-primary font-mono block mb-1">ID del diseño en Canva (de la columna "Link Canva")</label>
+            <input
+              type="text"
+              value={canvaDesignId}
+              onChange={e => onCanvaIdChange(e.target.value)}
+              placeholder="Ej: DAHD6xdeP5M"
+              className="w-full bg-background border border-primary/30 rounded-lg text-foreground font-mono text-[11px] py-2 px-2.5 outline-none focus:border-primary transition-colors"
+            />
+          </div>
         </div>
       )}
 
