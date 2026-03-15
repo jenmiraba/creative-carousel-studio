@@ -57,7 +57,7 @@ const StepNotion = ({
         const props = p.properties;
         return {
           id: p.id,
-          num: props["userDefined:ID"]?.unique_id?.number || "",
+          num: props["ID"]?.rich_text?.[0]?.plain_text || "",
           title: props["Título del Post"]?.title?.[0]?.plain_text || "(Sin título)",
           formato: props["Formato"]?.select?.name || "",
           herramientas: (props["Herramientas"]?.multi_select || []).map((h: any) => h.name),
