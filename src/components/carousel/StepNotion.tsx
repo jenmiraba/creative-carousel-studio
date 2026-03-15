@@ -15,7 +15,7 @@ interface StepNotionProps {
   onContinue: () => void;
 }
 
-const NOTION_DB = "31fb9c1c-c8bc-80e6-9c97-f5f33a77d318";
+const NOTION_DB = "31fb9c1cc8bc80e69c97f5f33a77d318";
 
 const FILTERS: { key: FilterType; label: string }[] = [
   { key: "all", label: "Todos" },
