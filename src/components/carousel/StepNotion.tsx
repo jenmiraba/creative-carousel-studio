@@ -52,8 +52,6 @@ const StepNotion = ({
       const data = fnData;
       if (data.object === "error") throw new Error(data.message || `Error ${data.status}`);
 
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
 
       const mapped: NotionPost[] = data.results.map((p: any) => {
         const props = p.properties;
