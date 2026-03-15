@@ -29,8 +29,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          page_size: pageSize,
-          sorts: [{ property: "userDefined:ID", direction: "descending" }],
+          page_size: pageSize
         }),
       }
     );
