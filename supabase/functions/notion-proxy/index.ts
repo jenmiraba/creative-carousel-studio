@@ -35,12 +35,10 @@ Deno.serve(async (req) => {
       }
     );
 
-    const data = await res.json();
-
-    return new Response(JSON.stringify(data), {
-      status: res.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const text = await res.text();
+    console.log("Notion API response:", text);
+    return new Response(text, { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    
   } catch (error) {
     console.error("Notion proxy error:", error);
     return new Response(
