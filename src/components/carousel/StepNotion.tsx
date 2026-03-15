@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { NotionPost, FilterType } from "@/types/carousel";
 
 interface StepNotionProps {
@@ -43,18 +44,14 @@ const StepNotion = ({
     setLoadStatus("idle");
 
     try {
-      const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB}/query`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${notionKey}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ page_size: 100, sorts: [{ property: "userDefined:ID", direction: "descending" }] }),
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("notion-proxy", {
+        body: { notionToken: notionKey, databaseId: NOTION_DB, pageSize: 100 },
       });
 
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
+      if (fnError) throw new Error(fnError.message || "Edge function error");
+      const data = fnData;
+      if (data.object === "error") throw new Error(data.message || `Error ${data.status}`);
+
 
       const mapped: NotionPost[] = data.results.map((p: any) => {
         const props = p.properties;
