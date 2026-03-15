@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { NotionPost, FilterType } from "@/types/carousel";
 
 interface StepNotionProps {
