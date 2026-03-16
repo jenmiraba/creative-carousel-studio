@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { notionToken, databaseId, pageSize = 100 } = await req.json();
+    const { notionToken, databaseId, pageSize = 100, body } = await req.json();
 
     if (!notionToken || !databaseId) {
       return new Response(
@@ -19,19 +19,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Llamada a Notion sin 'sorts', porque ID es texto
+    const notionBody = body ?? { page_size: pageSize };
+
     const res = await fetch(
       `https://api.notion.com/v1/databases/${databaseId}/query`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${notionToken}`,
-          "Notion-Version": "2026-03-11",
+          "Notion-Version": "2022-06-28",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          page_size: pageSize
-        }),
+        body: JSON.stringify(notionBody),
       }
     );
 
@@ -39,10 +38,11 @@ Deno.serve(async (req) => {
     console.log("Notion API response:", text);
     return new Response(text, { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     
-  } catch (error) {
-    console.error("Notion proxy error:", error);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Notion proxy error:", message);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
