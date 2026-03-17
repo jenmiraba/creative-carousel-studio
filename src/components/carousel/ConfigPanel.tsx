@@ -55,19 +55,19 @@ const ConfigPanel = ({ apiKeys, onChange }: ConfigPanelProps) => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const connectCanva = useCallback(() => {
-    if (!CANVA_CLIENT_ID) {
-      console.error("VITE_CANVA_CLIENT_ID not set");
-      return;
+  const connectCanva = useCallback(async () => {
+    try {
+      // Fetch the auth URL from the edge function (keeps client_id server-side)
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/canva-oauth?get_auth_url=1`);
+      const data = await res.json();
+      if (data.auth_url) {
+        window.open(data.auth_url, "canva-oauth", "width=600,height=700,popup=yes");
+      } else {
+        console.error("Failed to get Canva auth URL:", data.error);
+      }
+    } catch (e) {
+      console.error("Error starting Canva OAuth:", e);
     }
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: CANVA_CLIENT_ID,
-      scope: "design:content:write",
-      redirect_uri: REDIRECT_URI,
-    });
-    const authUrl = `https://www.canva.com/api/oauth/authorize?${params}`;
-    window.open(authUrl, "canva-oauth", "width=600,height=700,popup=yes");
   }, []);
 
   const disconnectCanva = () => {
