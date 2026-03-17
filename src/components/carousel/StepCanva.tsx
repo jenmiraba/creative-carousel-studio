@@ -84,6 +84,8 @@ const StepCanva = ({ genData, selectedPost, canvaDesignId, onBack }: StepCanvaPr
       setStatus("starting");
       setErrorMsg("");
 
+      const canvaToken = await getValidCanvaToken();
+
       // 1. Start editing transaction
       const startRes = await invokeCanva({
         canvaToken,
