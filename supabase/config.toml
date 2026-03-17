@@ -1,1 +1,7 @@
 project_id = "xcebzhpdfiempckpbymy"
+
+[functions.canva-oauth]
+verify_jwt = false
+
+[functions.canva-proxy]
+verify_jwt = false
