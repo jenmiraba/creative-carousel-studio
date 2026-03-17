@@ -64,11 +64,6 @@ const StepCanva = ({ genData, selectedPost, canvaDesignId, onBack }: StepCanvaPr
   };
 
   const editInCanva = async () => {
-    if (!canvaToken) {
-      setErrorMsg("Necesitás configurar tu Canva API Key en el panel de configuración.");
-      setStatus("error");
-      return;
-    }
     if (!canvaDesignId) {
       setErrorMsg("No hay un ID de diseño de Canva configurado.");
       setStatus("error");
