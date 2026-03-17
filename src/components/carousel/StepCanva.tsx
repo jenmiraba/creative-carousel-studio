@@ -20,12 +20,41 @@ const STATUS_LABELS: Record<EditStatus, string> = {
   error: "❌ Error al editar",
 };
 
+const getValidCanvaToken = async (): Promise<string> => {
+  const token = localStorage.getItem("cs_key_canva") || "";
+  const expiresAt = Number(localStorage.getItem("cs_key_canva_expires") || "0");
+  const refreshToken = localStorage.getItem("cs_key_canva_refresh") || "";
+
+  // If token exists and not expired (with 60s buffer), use it
+  if (token && expiresAt > Date.now() + 60000) {
+    return token;
+  }
+
+  // Try to refresh
+  if (refreshToken) {
+    const { data, error } = await supabase.functions.invoke("canva-oauth", {
+      body: { refresh_token: refreshToken },
+    });
+    if (!error && data?.access_token) {
+      localStorage.setItem("cs_key_canva", data.access_token);
+      if (data.refresh_token) localStorage.setItem("cs_key_canva_refresh", data.refresh_token);
+      if (data.expires_in) {
+        localStorage.setItem("cs_key_canva_expires", String(Date.now() + data.expires_in * 1000));
+      }
+      return data.access_token;
+    }
+    throw new Error("Token expirado. Reconectá Canva desde la configuración.");
+  }
+
+  if (!token) throw new Error("No hay token de Canva. Conectá Canva desde la configuración.");
+  return token;
+};
+
 const StepCanva = ({ genData, selectedPost, canvaDesignId, onBack }: StepCanvaProps) => {
   const [status, setStatus] = useState<EditStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const slideTexts = genData?.slides?.map(s => s.text) || [];
-  const canvaToken = localStorage.getItem("cs_key_canva") || "";
 
   const invokeCanva = async (payload: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("canva-proxy", { body: payload });
