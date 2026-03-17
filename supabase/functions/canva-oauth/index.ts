@@ -11,6 +11,21 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
+  // GET with get_auth_url param: return the authorization URL
+  const getAuthUrl = url.searchParams.get("get_auth_url");
+  if (getAuthUrl) {
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      scope: "design:content:write",
+      redirect_uri: redirectUri,
+    });
+    const authUrl = `https://www.canva.com/api/oauth/authorize?${params}`;
+    return new Response(JSON.stringify({ auth_url: authUrl }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
 
