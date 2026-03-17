@@ -1,27 +1,83 @@
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Eye, EyeOff, Unplug, Plug } from "lucide-react";
 
 interface ConfigPanelProps {
   apiKeys: { anthropic: string; notion: string; canva: string };
   onChange: (keys: { anthropic: string; notion: string; canva: string }) => void;
 }
 
-const fields = [
+const textFields = [
   { key: "anthropic" as const, label: "Anthropic API Key", placeholder: "sk-ant-...", hint: "console.anthropic.com", url: "https://console.anthropic.com/settings/keys" },
   { key: "notion" as const, label: "Notion Integration Token", placeholder: "secret_...", hint: "notion.so/my-integrations", url: "https://www.notion.so/my-integrations" },
-  { key: "canva" as const, label: "Canva API Key", placeholder: "OC-...", hint: "canva.com/developers", url: "https://www.canva.com/developers" },
 ];
+
+const CANVA_CLIENT_ID = import.meta.env.VITE_CANVA_CLIENT_ID || "";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/canva-oauth`;
 
 const ConfigPanel = ({ apiKeys, onChange }: ConfigPanelProps) => {
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
+  const [canvaConnected, setCanvaConnected] = useState(!!apiKeys.canva);
+
+  useEffect(() => {
+    setCanvaConnected(!!apiKeys.canva);
+  }, [apiKeys.canva]);
+
+  // Listen for OAuth popup message
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const data = event.data;
+      if (data?.access_token) {
+        localStorage.setItem("cs_key_canva", data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem("cs_key_canva_refresh", data.refresh_token);
+        }
+        if (data.expires_in) {
+          const expiresAt = Date.now() + data.expires_in * 1000;
+          localStorage.setItem("cs_key_canva_expires", String(expiresAt));
+        }
+        onChange({ ...apiKeys, canva: data.access_token });
+        setCanvaConnected(true);
+      } else if (data?.error) {
+        console.error("Canva OAuth error:", data.error);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [apiKeys, onChange]);
 
   const toggleVis = (key: string) => setVisible(v => ({ ...v, [key]: !v[key] }));
 
   const save = () => {
-    Object.entries(apiKeys).forEach(([k, v]) => localStorage.setItem(`cs_key_${k}`, v));
+    Object.entries(apiKeys).forEach(([k, v]) => {
+      if (k !== "canva") localStorage.setItem(`cs_key_${k}`, v);
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const connectCanva = useCallback(() => {
+    if (!CANVA_CLIENT_ID) {
+      console.error("VITE_CANVA_CLIENT_ID not set");
+      return;
+    }
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: CANVA_CLIENT_ID,
+      scope: "design:content:write",
+      redirect_uri: REDIRECT_URI,
+    });
+    const authUrl = `https://www.canva.com/api/oauth/authorize?${params}`;
+    window.open(authUrl, "canva-oauth", "width=600,height=700,popup=yes");
+  }, []);
+
+  const disconnectCanva = () => {
+    localStorage.removeItem("cs_key_canva");
+    localStorage.removeItem("cs_key_canva_refresh");
+    localStorage.removeItem("cs_key_canva_expires");
+    onChange({ ...apiKeys, canva: "" });
+    setCanvaConnected(false);
   };
 
   return (
@@ -31,7 +87,7 @@ const ConfigPanel = ({ apiKeys, onChange }: ConfigPanelProps) => {
         <span className="flex-1 h-px bg-border" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {fields.map(f => (
+        {textFields.map(f => (
           <div key={f.key}>
             <label className="text-[11px] text-muted-foreground font-mono block mb-1.5">{f.label}</label>
             <div className="relative">
@@ -54,6 +110,37 @@ const ConfigPanel = ({ apiKeys, onChange }: ConfigPanelProps) => {
             </div>
           </div>
         ))}
+
+        {/* Canva OAuth */}
+        <div>
+          <label className="text-[11px] text-muted-foreground font-mono block mb-1.5">Canva (OAuth)</label>
+          {canvaConnected ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-background border border-border rounded-lg py-2 px-2.5 text-[11px] font-mono text-muted-foreground flex items-center gap-1.5">
+                <Plug size={13} className="text-primary" />
+                <span className="text-primary">✅ Conectado</span>
+              </div>
+              <button
+                onClick={disconnectCanva}
+                className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
+                title="Desconectar Canva"
+              >
+                <Unplug size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={connectCanva}
+              className="w-full bg-background border border-border rounded-lg text-foreground font-mono text-[11px] py-2 px-2.5 cursor-pointer hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plug size={13} />
+              Conectar con Canva
+            </button>
+          )}
+          <div className="text-[10px] text-muted-foreground mt-1">
+            <a href="https://www.canva.com/developers" target="_blank" rel="noreferrer" className="text-primary hover:underline">Canva Developers →</a>
+          </div>
+        </div>
       </div>
       <div className="flex items-center mt-3.5">
         <button onClick={save} className="px-4 py-2 bg-primary/15 text-primary border border-primary/30 rounded-lg text-xs cursor-pointer hover:bg-primary/25 transition-colors">
