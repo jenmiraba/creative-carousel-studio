@@ -11,9 +11,7 @@ const textFields = [
   { key: "notion" as const, label: "Notion Integration Token", placeholder: "secret_...", hint: "notion.so/my-integrations", url: "https://www.notion.so/my-integrations" },
 ];
 
-const CANVA_CLIENT_ID = import.meta.env.VITE_CANVA_CLIENT_ID || "";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/canva-oauth`;
 
 const ConfigPanel = ({ apiKeys, onChange }: ConfigPanelProps) => {
   const [visible, setVisible] = useState<Record<string, boolean>>({});
