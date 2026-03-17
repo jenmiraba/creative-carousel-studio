@@ -11,6 +11,10 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
+  const clientId = Deno.env.get("CANVA_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("CANVA_CLIENT_SECRET") || "";
+  const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/canva-oauth`;
+
   // GET with get_auth_url param: return the authorization URL
   const getAuthUrl = url.searchParams.get("get_auth_url");
   if (getAuthUrl) {
@@ -28,10 +32,6 @@ Deno.serve(async (req) => {
 
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
-
-  const clientId = Deno.env.get("CANVA_CLIENT_ID") || "";
-  const clientSecret = Deno.env.get("CANVA_CLIENT_SECRET") || "";
-  const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/canva-oauth`;
 
   // If there's an error from Canva
   if (error) {
